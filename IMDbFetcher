@@ -1,0 +1,67 @@
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+
+# List to store the number of pages to look at
+pageNumber = 0
+
+#list to store the contents of our movies
+rows=[]
+
+
+# the number of pages for pageNumber needs to be adjusted to avoid duplicates. Some might still occur, though. 
+while pageNumber <= 3:
+    
+    # Fetches the link we are using
+    html = requests.get("https://www.imdb.com/search/keyword/?keywords=cyborg&ref_=kw_ref_yr&sort=moviemeter,asc&mode=detail&page=" + str(pageNumber) + "&title_type=movie&genres=Sci-Fi&release_date=1990%2C2020")
+    
+    # Android: https://www.imdb.com/search/keyword/?keywords=android&ref_=kw_nxt&mode=detail&page=" + str(pageNumber) +"&title_type=movie&genres=Sci-Fi&release_date=1990%2C2020&sort=alpha,asc"
+    # AI: https://www.imdb.com/search/keyword/?keywords=artificial-intelligence&ref_=kw_ref_yr&sort=moviemeter,asc&mode=detail&page=" + str(pageNumber) + "&title_type=movie&genres=Sci-Fi&release_date=1990%2C2020
+    # Robot: https://www.imdb.com/search/keyword/?keywords=robot&ref_=kw_ref_yr&sort=moviemeter,asc&mode=detail&page=" + str(pageNumber) + "&title_type=movie&genres=Sci-Fi&release_date=1990%2C2020
+    # Cyborg: https://www.imdb.com/search/keyword/?keywords=cyborg&ref_=kw_ref_yr&sort=moviemeter,asc&mode=detail&page=" + "str(pageNumber) + "1&title_type=movie&genres=Sci-Fi&release_date=1990%2C2020
+        
+    soup = BeautifulSoup(html.content, 'html.parser')
+    
+    # Our overall movie details in the webpages HTML
+    movies = soup.find_all("div", {"class": "lister-item mode-detail"})
+    
+    #Fetches the info of each movie
+    for movie in movies:
+        movie_dict = {}
+        
+        # Finds the movies title
+        for info in movie.find_all('h3', {"class": "lister-item-header"}):  # note I'm using select with css here because it is better than find_all
+            for title in info.find_all('a', href=True):
+                movie_dict["Headlines"] = title.text.strip()
+            
+            # Finds the movies genre    
+            for genre in movie.find_all("span", {"class": "genre"}):
+                movie_dict["Genre"] = genre.text.strip()
+            
+            # Finds the movies release year
+            for year in movie.find_all("span", {"class": "lister-item-year text-muted unbold"}):
+                movie_dict["Year"] = year.text.strip()
+            
+            # Finds the runtime of the movie
+            for runtime in movie.find_all("span", {"class": "runtime"}):
+                movie_dict["Runtime"] = runtime.text.strip()
+                
+            # Finds the rating of the movie
+            for rating in movie.find_all("div", {"class":"inline-block ratings-imdb-rating"}):
+                for strong in rating.find_all("strong"):
+                    movie_dict["Rating"] = strong.text.strip()
+            
+            #Finds the abstract of the movie
+            for abstract in movie.find_all("p", {"class": ""}):
+                movie_dict["Abstract"] = abstract.text.strip()
+                
+        # Adds the info to our rows list    
+        rows.append(movie_dict)
+    
+    # advances the pagenumber
+    pageNumber += 1
+    print("Run " + (str(pageNumber)))
+    
+    # Adds the content to an excel file      
+    df = pd.DataFrame(rows)
+    df.to_excel("someName.xlsx", index = True)
